@@ -1,0 +1,14 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:user": "node node_modules/dynamoose-to-cloudformation -i user.js -o dynamodb/descriptions/user.yml"
+  },
+  "dependencies": {
+    "dynamoose-to-cloudformation": "0.0.3"
+  },
+  "author": "John Carmichael",
+  "license": "ISC"
+}

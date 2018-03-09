@@ -1,0 +1,14 @@
+TableUser:
+  Type: 'AWS::DynamoDB::Table'
+Properties:
+  TableName: user
+  AttributeDefinitions:
+    - AttributeName: id
+      AttributeType: S
+    - AttributeName: forename
+      AttributeType: S
+  KeySchema:
+    - AttributeName: id
+      KeyType: HASH
+    - AttributeName: forename
+      KeyType: RANGE
