@@ -1,10 +1,13 @@
 {
   "name": "dynamoose-to-cloudformation",
-  "version": "0.0.3",
+  "version": "0.1.1",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:all": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml",
+    "build:user": "node ./index.js -i ./models/user.js -o dynamodb/descriptions/user.yml",
+    "create:example": "echo 'todo'",
+    "test": "NODE_ENV=TEST jest"
   },
   "repository": {
     "type": "git",
@@ -21,6 +24,8 @@
     "commander": "^2.15.0",
     "fs-extra": "^5.0.0",
     "lodash": "latest",
+    "recursive-readdir": "^2.2.2",
+    "replace-in-file": "^3.4.0",
     "uppercamelcase": "^3.0.0",
     "write-yaml": "^1.0.0"
   },

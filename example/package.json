@@ -4,10 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:user": "node node_modules/dynamoose-to-cloudformation -i user.js -o dynamodb/descriptions/user.yml"
+    "build:all": "node node_modules/dynamoose-to-cloudformation -i ./models -d -o dynamodb/descriptions/all.yml",
+    "build:user": "node node_modules/dynamoose-to-cloudformation -i ./models/user.js -o dynamodb/descriptions/user.yml",
   },
   "dependencies": {
-    "dynamoose-to-cloudformation": "0.0.3"
+    "dynamoose-to-cloudformation": "0.1.1"
   },
   "author": "John Carmichael",
   "license": "ISC"

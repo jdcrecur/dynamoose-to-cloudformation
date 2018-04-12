@@ -1,26 +1,26 @@
 module.exports = {
-  name: 'user',
+  name: 'User',
   attributes: {
     id: {
       type: String,
       required: true,
-      hashKey: true,
+      hashKey: true
     },
     forename: {
       type: String,
       index: true,
-      required: true,
+      required: true
     },
     surname: {
       type: String,
-      required: true,
+      required: true
     },
     email: {
       type: String,
-      required: true,
+      required: true
     },
     roles: [{
-      name: String,
-    }],
-  },
+      name: String
+    }]
+  }
 }

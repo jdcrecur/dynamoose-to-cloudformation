@@ -1,0 +1,112 @@
+Description: >-
+  Dynamodb cloudformation schema including scaling from
+  https://www.npmjs.com/package/dynamoose-to-cloudformation
+Parameters:
+  WriteScalingPolicyTarget:
+    Type: Number
+    Default: 50
+  ReadScalingPolicyTarget:
+    Type: Number
+    Default: 50
+  WriteScalingPolicyScaleInCooldown:
+    Type: Number
+    Default: 60
+  WriteScalingPolicyScaleOutCooldown:
+    Type: Number
+    Default: 60
+  ReadScalingPolicyScaleInCooldown:
+    Type: Number
+    Default: 60
+  ReadScalingPolicyScaleOutCooldown:
+    Type: Number
+    Default: 60
+  TableUserReadCapacityUnits:
+    Description: ReadCapacityUnits for the table
+    Type: Number
+    Default: 15
+  TableUserWriteCapacityUnits:
+    Description: WriteCapacityUnits for the table
+    Type: Number
+    Default: 15
+  TableUserReadMinCap:
+    Type: Number
+    Default: 15
+  TableUserReadMaxCap:
+    Type: Number
+    Default: 15
+  TableUserWriteMinCap:
+    Type: Number
+    Default: 15
+  TableUserWriteMaxCap:
+    Type: Number
+    Default: 15
+Resources:
+  TableUser:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: User
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: forename
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: forename
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: '!Ref TableUserReadCapacityUnits'
+        WriteCapacityUnits: '!Ref TableUserWriteCapacityUnits'
+  TableUserWriteScalableTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: '!Ref TableUserWriteMaxCap'
+      MinCapacity: '!Ref TableUserWriteMinCap'
+      ResourceId: !Join
+        - /
+        - - table
+          - '!Ref TableUser'
+      RoleARN: >-
+        !Sub 
+        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: 'dynamodb:table:WriteCapacityUnits'
+      ServiceNamespace: dynamodb
+  TableUserReadScalableTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: '!Ref TableUserReadMaxCap'
+      MinCapacity: '!Ref TableUserReadMinCap'
+      ResourceId: !Join
+        - /
+        - - table
+          - '!Ref TableUser'
+      RoleARN: >-
+        !Sub 
+        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: 'dynamodb:table:ReadCapacityUnits'
+      ServiceNamespace: dynamodb
+  TableUserWriteScalingPolicy:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: '!Ref TableUserWriteScalableTarget'
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: '!Ref WriteScalingPolicyTarget'
+        ScaleInCooldown: '!Ref WriteScalingPolicyScaleInCooldown'
+        ScaleOutCooldown: '!Ref WriteScalingPolicyScaleOutCooldown'
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  TableUserReadScalingPolicy:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: '!Ref TableUserReadScalableTarget'
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: '!Ref ReadScalingPolicyTarget'
+        ScaleInCooldown: '!Ref ReadScalingPolicyScaleInCooldown'
+        ScaleOutCooldown: '!Ref ReadScalingPolicyScaleOutCooldown'
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
