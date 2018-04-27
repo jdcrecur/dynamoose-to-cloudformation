@@ -3,12 +3,38 @@ var replaceInFile = require('replace-in-file')
 var _ = require('lodash')
 var upperCamelCase = require('uppercamelcase')
 var fs = require('fs-extra')
+var readFile = fs.readFile
 
 var ymlObject = {}
 
 var self = {
   process: function (options, files) {
-    ymlObject = {}
+    ymlObject = self.getBaseAttributes(options)
+
+    self.iterator(options, files, function () {
+
+      // write the file to disk and performs any outstanding replacements
+      fs.ensureFileSync(options.output)
+
+      wy(options.output, ymlObject, function (err) {
+        // Handle the error
+        if (err) {
+          throw new Error(err)
+        }
+
+        //lastly call the replace chars function
+        try {
+          self.replaceCharsInFile(options.output)
+        } catch (err) {
+          console.error('Error writing file')
+          console.error(err)
+        }
+      })
+    })
+  },
+
+  getBaseAttributes: function (options) {
+    var ymlObject = {}
     ymlObject.Description = 'Dynamodb cloudformation schema including scaling from https://www.npmjs.com/package/dynamoose-to-cloudformation'
     ymlObject.Parameters = {
       WriteScalingPolicyTarget: {
@@ -37,30 +63,7 @@ var self = {
       }
     }
     ymlObject.Resources = {}
-
-    self.iterator(options, files, function () {
-
-      // write the file to disk and performs any outstanding replacements
-      fs.ensureFileSync(options.output)
-
-      wy(options.output, ymlObject, function (err) {
-        // Handle the error
-        if (err) {
-          throw new Error(err)
-        }
-        // insert the join syntax
-        var replaceOptions = {
-          files: options.output,
-          from: /ResourceId:/g,
-          to: 'ResourceId: !Join'
-        }
-        try {
-          replaceInFile.sync(replaceOptions)
-        } catch (e) {
-          console.error(e)
-        }
-      })
-    })
+    return ymlObject
   },
 
   iterator: function (options, files, cb) {
@@ -120,21 +123,27 @@ var self = {
         KeySchema: [],
         ProvisionedThroughput: {
           ReadCapacityUnits: '!Ref Table' + name + 'ReadCapacityUnits',
-          WriteCapacityUnits: '!Ref Table'+name+'WriteCapacityUnits'
+          WriteCapacityUnits: '!Ref Table' + name + 'WriteCapacityUnits'
         }
+      }
+    }
+
+    if (options.streams.indexOf(modelFile.name)) {
+      ymlObject.Resources['Table' + name].Properties.StreamSpecification = {
+        StreamViewType: 'NEW_AND_OLD_IMAGES'
       }
     }
 
     ymlObject.Resources['Table' + name + 'WriteScalableTarget'] = {
       Type: 'AWS::ApplicationAutoScaling::ScalableTarget',
       Properties: {
-        MaxCapacity: '!Ref Table'+name+'WriteMaxCap',
-        MinCapacity: '!Ref Table'+name+'WriteMinCap',
+        MaxCapacity: '!Ref Table' + name + 'WriteMaxCap',
+        MinCapacity: '!Ref Table' + name + 'WriteMinCap',
         ResourceId: [
           '/',
           [
             'table',
-            '!Ref Table'+name
+            '!Ref Table' + name
           ]
         ],
         RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable',
@@ -146,13 +155,13 @@ var self = {
     ymlObject.Resources['Table' + name + 'ReadScalableTarget'] = {
       Type: 'AWS::ApplicationAutoScaling::ScalableTarget',
       Properties: {
-        MaxCapacity: '!Ref Table'+name+'ReadMaxCap',
-        MinCapacity: '!Ref Table'+name+'ReadMinCap',
+        MaxCapacity: '!Ref Table' + name + 'ReadMaxCap',
+        MinCapacity: '!Ref Table' + name + 'ReadMinCap',
         ResourceId: [
           '/',
           [
             'table',
-            '!Ref Table'+name
+            '!Ref Table' + name
           ]
         ],
         RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable',
@@ -162,12 +171,12 @@ var self = {
     }
 
     ymlObject.Resources['Table' + name + 'WriteScalingPolicy'] = {
-      Type: 'AWS::ApplicationAutoScaling::ScalableTarget',
+      Type: 'AWS::ApplicationAutoScaling::ScalingPolicy',
       Properties: {
         PolicyName: 'WriteAutoScalingPolicy',
         PolicyType: 'TargetTrackingScaling',
-        ScalingTargetId: '!Ref Table'+name+'WriteScalableTarget',
-        TargetTrackingScalingPolicyConfiguration:{
+        ScalingTargetId: '!Ref Table' + name + 'WriteScalableTarget',
+        TargetTrackingScalingPolicyConfiguration: {
           TargetValue: '!Ref WriteScalingPolicyTarget',
           ScaleInCooldown: '!Ref WriteScalingPolicyScaleInCooldown',
           ScaleOutCooldown: '!Ref WriteScalingPolicyScaleOutCooldown',
@@ -179,7 +188,7 @@ var self = {
     }
 
     ymlObject.Resources['Table' + name + 'ReadScalingPolicy'] = {
-      Type: "AWS::ApplicationAutoScaling::ScalingPolicy",
+      Type: 'AWS::ApplicationAutoScaling::ScalingPolicy',
       Properties: {
         PolicyName: 'ReadAutoScalingPolicy',
         PolicyType: 'TargetTrackingScaling',
@@ -194,7 +203,6 @@ var self = {
         }
       }
     }
-
 
     _.forIn(attributes, function (value, key) {
       switch (Object(value.type).name) {
@@ -221,6 +229,38 @@ var self = {
     })
 
     cb()
+  },
+
+  newFileData: '',
+
+  replaceCharsInFile: function (filePath) {
+
+    // insert the join syntax
+    var replaceOptions = {
+      files: filePath,
+      from: /ResourceId:/g,
+      to: 'ResourceId: !Join'
+    }
+    try {
+      replaceInFile.sync(replaceOptions)
+    } catch (e) {
+      console.error(e)
+      process.exit(0)
+    }
+
+    fs.readFile(filePath, 'utf8').then(function (data) {
+      var regex1 = RegExp('([\'])(.+)([\'])', 'gm')
+      var array1
+      self.newFileData = data
+
+      while ((array1 = regex1.exec(data)) !== null) {
+        if (array1[0].substring(0, 6) === '\'!Ref ') {
+          self.newFileData = self.newFileData.split(array1[0]).join(array1[0].split('\'').join(''))
+        }
+      }
+
+      fs.outputFileSync(filePath, self.newFileData)
+    })
   }
 }
 

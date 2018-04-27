@@ -1,7 +1,7 @@
 {
   "name": "dynamoose-to-cloudformation",
-  "version": "0.1.1",
-  "description": "",
+  "version": "0.1.6",
+  "description": "A beta release of a cloudformation yml generation from dynamoose models",
   "main": "index.js",
   "scripts": {
     "build:all": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml",

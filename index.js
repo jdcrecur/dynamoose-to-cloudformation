@@ -4,6 +4,10 @@ var path = require('path')
 var recursive = require('recursive-readdir')
 var processIt = require('./processIt')
 
+function list(val) {
+  return val.split(',');
+}
+
 program
   .version(pkg.version, '-v, --version')
   .option('-i, --input [fullpath]', 'The es5 input file to parse. Expects the said file to offer a std module.exports object containing name and attributes')
@@ -21,6 +25,7 @@ program
   .option('--TableReadMaxCap [integer]', 'TableReadMaxCap integer, defualt is 15')
   .option('--TableWriteMinCap [integer]', 'TableWriteMinCap integer, defualt is 15')
   .option('--TableWriteMaxCap [integer]', 'TableWriteMaxCap integer, defualt is 15')
+  .option('-s --streams [list]', 'Comma separated list of tables names to add streams, eg users,songs', list)
   .parse(process.argv)
 
 if (!program.input || !program.output) {

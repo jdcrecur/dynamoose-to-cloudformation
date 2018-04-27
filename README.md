@@ -15,6 +15,7 @@ Usage: index [options]
     -i, --input [fullpath]                          The es5 input file to parse. Expects the said file to offer a std module.exports object containing name and attributes
     -d, --dir                                       If present the tool will attempt to scrape all the 1st level files found in the folder, if not present then the tool will assume the input is a file
     -o, --output [fullpath]                         The output path including filename to place the file
+    -s --streams [list]                             Comma separated list of tables names to add streams, eg users,songs
     --WriteScalingPolicyTarget [integer]            WriteScalingPolicyTarget integer, defualt is 50
     --ReadScalingPolicyTarget [integer]             ReadScalingPolicyTarget integer, defualt is 50
     --WriteScalingPolicyScaleInCooldown [integer]   WriteScalingPolicyScaleInCooldown integer, defualt is 60
@@ -28,7 +29,7 @@ Usage: index [options]
     --TableWriteMinCap [integer]                    TableWriteMinCap integer, defualt is 15
     --TableWriteMaxCap [integer]                    TableWriteMaxCap integer, defualt is 15
     -h, --help                                      output usage information
-
+    
 ```
 
 ## Example usage
@@ -42,67 +43,6 @@ See the example folder within this project which also include single model optio
 ## What it will do
 Accept an object(s) for dynamoose model(s) in the following format (Note this is es5 not es6, any es6 modules will not work):
 User.js
-```
-module.exports = {
-  name: 'User',
-  attributes: {
-    id: {
-      type: String,
-      required: true,
-      hashKey: true
-    },
-    forename: {
-      type: String,
-      index: true,
-      required: true
-    },
-    surname: {
-      type: String,
-      required: true
-    },
-    email: {
-      type: String,
-      required: true
-    },
-    roles: [{
-      name: String
-    }]
-  }
-}
-```
-Hashing.js
-```
-module.exports = {
-  name: 'Hashing',
-  attributes: {
-    id: {
-      type: String,
-      required: true,
-      hashKey: true
-    },
-    userId: {
-      type: String,
-      index: true,
-      required: true
-    },
-    hash: {
-      type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      required: true
-    },
-    expirationDate: {
-      type: String,
-      required: true
-    }
-  }
-}
-```
-
-
-The output will be yml usable within a cloud formation for example:
 ```
 Description: >-
   Dynamodb cloudformation schema including scaling from
@@ -182,17 +122,19 @@ Resources:
         - AttributeName: userId
           KeyType: RANGE
       ProvisionedThroughput:
-        ReadCapacityUnits: '!Ref TableHashingReadCapacityUnits'
-        WriteCapacityUnits: '!Ref TableHashingWriteCapacityUnits'
+        ReadCapacityUnits: !Ref TableHashingReadCapacityUnits
+        WriteCapacityUnits: !Ref TableHashingWriteCapacityUnits
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   TableHashingWriteScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: '!Ref TableHashingWriteMaxCap'
-      MinCapacity: '!Ref TableHashingWriteMinCap'
+      MaxCapacity: !Ref TableHashingWriteMaxCap
+      MinCapacity: !Ref TableHashingWriteMinCap
       ResourceId: !Join
         - /
         - - table
-          - '!Ref TableHashing'
+          - !Ref TableHashing
       RoleARN: >-
         !Sub 
         arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
@@ -201,27 +143,27 @@ Resources:
   TableHashingReadScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: '!Ref TableHashingReadMaxCap'
-      MinCapacity: '!Ref TableHashingReadMinCap'
+      MaxCapacity: !Ref TableHashingReadMaxCap
+      MinCapacity: !Ref TableHashingReadMinCap
       ResourceId: !Join
         - /
         - - table
-          - '!Ref TableHashing'
+          - !Ref TableHashing
       RoleARN: >-
         !Sub 
         arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
       ScalableDimension: 'dynamodb:table:ReadCapacityUnits'
       ServiceNamespace: dynamodb
   TableHashingWriteScalingPolicy:
-    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: WriteAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: '!Ref TableHashingWriteScalableTarget'
+      ScalingTargetId: !Ref TableHashingWriteScalableTarget
       TargetTrackingScalingPolicyConfiguration:
-        TargetValue: '!Ref WriteScalingPolicyTarget'
-        ScaleInCooldown: '!Ref WriteScalingPolicyScaleInCooldown'
-        ScaleOutCooldown: '!Ref WriteScalingPolicyScaleOutCooldown'
+        TargetValue: !Ref WriteScalingPolicyTarget
+        ScaleInCooldown: !Ref WriteScalingPolicyScaleInCooldown
+        ScaleOutCooldown: !Ref WriteScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBWriteCapacityUtilization
   TableHashingReadScalingPolicy:
@@ -229,11 +171,11 @@ Resources:
     Properties:
       PolicyName: ReadAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: '!Ref TableHashingReadScalableTarget'
+      ScalingTargetId: !Ref TableHashingReadScalableTarget
       TargetTrackingScalingPolicyConfiguration:
-        TargetValue: '!Ref ReadScalingPolicyTarget'
-        ScaleInCooldown: '!Ref ReadScalingPolicyScaleInCooldown'
-        ScaleOutCooldown: '!Ref ReadScalingPolicyScaleOutCooldown'
+        TargetValue: !Ref ReadScalingPolicyTarget
+        ScaleInCooldown: !Ref ReadScalingPolicyScaleInCooldown
+        ScaleOutCooldown: !Ref ReadScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBReadCapacityUtilization
   TableUser:
@@ -251,17 +193,19 @@ Resources:
         - AttributeName: forename
           KeyType: RANGE
       ProvisionedThroughput:
-        ReadCapacityUnits: '!Ref TableUserReadCapacityUnits'
-        WriteCapacityUnits: '!Ref TableUserWriteCapacityUnits'
+        ReadCapacityUnits: !Ref TableUserReadCapacityUnits
+        WriteCapacityUnits: !Ref TableUserWriteCapacityUnits
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   TableUserWriteScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: '!Ref TableUserWriteMaxCap'
-      MinCapacity: '!Ref TableUserWriteMinCap'
+      MaxCapacity: !Ref TableUserWriteMaxCap
+      MinCapacity: !Ref TableUserWriteMinCap
       ResourceId: !Join
         - /
         - - table
-          - '!Ref TableUser'
+          - !Ref TableUser
       RoleARN: >-
         !Sub 
         arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
@@ -270,27 +214,27 @@ Resources:
   TableUserReadScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: '!Ref TableUserReadMaxCap'
-      MinCapacity: '!Ref TableUserReadMinCap'
+      MaxCapacity: !Ref TableUserReadMaxCap
+      MinCapacity: !Ref TableUserReadMinCap
       ResourceId: !Join
         - /
         - - table
-          - '!Ref TableUser'
+          - !Ref TableUser
       RoleARN: >-
         !Sub 
         arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
       ScalableDimension: 'dynamodb:table:ReadCapacityUnits'
       ServiceNamespace: dynamodb
   TableUserWriteScalingPolicy:
-    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: WriteAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: '!Ref TableUserWriteScalableTarget'
+      ScalingTargetId: !Ref TableUserWriteScalableTarget
       TargetTrackingScalingPolicyConfiguration:
-        TargetValue: '!Ref WriteScalingPolicyTarget'
-        ScaleInCooldown: '!Ref WriteScalingPolicyScaleInCooldown'
-        ScaleOutCooldown: '!Ref WriteScalingPolicyScaleOutCooldown'
+        TargetValue: !Ref WriteScalingPolicyTarget
+        ScaleInCooldown: !Ref WriteScalingPolicyScaleInCooldown
+        ScaleOutCooldown: !Ref WriteScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBWriteCapacityUtilization
   TableUserReadScalingPolicy:
@@ -298,11 +242,11 @@ Resources:
     Properties:
       PolicyName: ReadAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: '!Ref TableUserReadScalableTarget'
+      ScalingTargetId: !Ref TableUserReadScalableTarget
       TargetTrackingScalingPolicyConfiguration:
-        TargetValue: '!Ref ReadScalingPolicyTarget'
-        ScaleInCooldown: '!Ref ReadScalingPolicyScaleInCooldown'
-        ScaleOutCooldown: '!Ref ReadScalingPolicyScaleOutCooldown'
+        TargetValue: !Ref ReadScalingPolicyTarget
+        ScaleInCooldown: !Ref ReadScalingPolicyScaleInCooldown
+        ScaleOutCooldown: !Ref ReadScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBReadCapacityUtilization
 ```
