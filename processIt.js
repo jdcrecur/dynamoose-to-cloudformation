@@ -4,6 +4,7 @@ var _ = require('lodash')
 var upperCamelCase = require('uppercamelcase')
 var fs = require('fs-extra')
 var readFile = fs.readFile
+var S = require('string')
 
 var ymlObject = {}
 
@@ -16,7 +17,9 @@ var self = {
       // write the file to disk and performs any outstanding replacements
       fs.ensureFileSync(options.output)
 
-      wy(options.output, ymlObject, function (err) {
+      wy(options.output, ymlObject, {
+        lineWidth: 250
+      }, function (err) {
         // Handle the error
         if (err) {
           throw new Error(err)
@@ -62,6 +65,7 @@ var self = {
         Default: options.ReadScalingPolicyScaleOutCooldown || 60
       }
     }
+    ymlObject.Outputs = {}
     ymlObject.Resources = {}
     return ymlObject
   },
@@ -75,19 +79,85 @@ var self = {
     })
   },
 
+  getAllUpperCaseLetters: function (string) {
+    var chars = upperCamelCase(string).split('')
+    var upperChars = ''
+    chars.forEach(function (char) {
+      if (upperChars.length === 0) {
+        upperChars = char.toUpperCase()
+      } else {
+        if (S(char).isUpper()) {
+          upperChars += char
+        }
+      }
+    })
+    return upperChars
+  },
+  getLastLowerCaseLetter: function (string, backwardOffset) {
+    if (typeof backwardOffset !== 'number') {
+      backwardOffset = 0
+    }
+    if (backwardOffset < 0) {
+      backwardOffset = 0
+    }
+
+    var chars = upperCamelCase(string).split('')
+    var lowerChars = ''
+    chars.forEach(function (char, i) {
+      if (i !== 0) {
+        if (S(char).isLower()) {
+          lowerChars += char
+        }
+      }
+    })
+    var index = (lowerChars.length - 1) - backwardOffset
+    if (index < 0) {
+      index = 0
+    }
+    return lowerChars[index]
+  },
+
+  uniqueNamesUsed: {},
+  uniqueNamesUsedCheckAndSet: function (name, proposed) {
+    if (self.uniqueNamesUsed[proposed]) {
+      proposed += self.getLastLowerCaseLetter(name)
+      return self.uniqueNamesUsedCheckAndSet(name, proposed)
+    }
+    self.uniqueNamesUsed[proposed] = name
+    return proposed
+  },
+  getUniqueShortHandTableName: function (name) {
+    var upperChars = self.getAllUpperCaseLetters(name)
+    if (upperChars.length === 1) {
+      upperChars += self.getLastLowerCaseLetter(name)
+    }
+    return self.uniqueNamesUsedCheckAndSet(name, upperChars)
+  },
+
+  modelFilePrep: function (options, modelFile) {
+    modelFile.shorthand = self.getUniqueShortHandTableName(modelFile.name)
+    if (options.tableNamePrefix) {
+      modelFile.name = options.tableNamePrefix + modelFile.name
+    }
+    return modelFile
+  },
+
   processSingleModel: function (options, file, cb) {
     var modelFile
     try {
       modelFile = require(file)
+      modelFile = self.modelFilePrep(options, modelFile)
     } catch (e) {
       throw new Error(e)
     }
+
     if (!modelFile.attributes && !modelFile.name) {
       throw new Error('Could not find the expected inputs in the file ')
     }
     var attributes = modelFile.attributes
     var name = upperCamelCase(modelFile.name)
 
+    // Parameters specific to the table
     ymlObject.Parameters['Table' + name + 'ReadCapacityUnits'] = {
       Description: 'ReadCapacityUnits for the table',
       Type: 'Number',
@@ -115,6 +185,17 @@ var self = {
       Default: options.TableWriteMaxCap || 15
     }
 
+    // Outputs object
+    ymlObject.Outputs['Table' + name + 'StreamARN'] = {
+      Value: '!GetAtt Table' + name + '.StreamArn',
+      Export: {
+        'Name': {
+          'Fn::Sub': '${AWS::StackName}-'+modelFile.shorthand
+        }
+      }
+    }
+
+    // The actual table definition
     ymlObject.Resources['Table' + name] = {
       Type: 'AWS::DynamoDB::Table',
       Properties: {
@@ -128,9 +209,11 @@ var self = {
       }
     }
 
-    if (options.streams.indexOf(modelFile.name)) {
-      ymlObject.Resources['Table' + name].Properties.StreamSpecification = {
-        StreamViewType: 'NEW_AND_OLD_IMAGES'
+    if (options.streams) {
+      if (options.streams.indexOf(modelFile.name) !== -1) {
+        ymlObject.Resources['Table' + name].Properties.StreamSpecification = {
+          StreamViewType: 'NEW_AND_OLD_IMAGES'
+        }
       }
     }
 
@@ -254,7 +337,8 @@ var self = {
       self.newFileData = data
 
       while ((array1 = regex1.exec(data)) !== null) {
-        if (array1[0].substring(0, 6) === '\'!Ref ') {
+        var start = array1[0].substring(0, 6)
+        if ( start.indexOf('\'!Ref ', '\'!Sub ', '\'!GetAt') !== -1 ) {
           self.newFileData = self.newFileData.split(array1[0]).join(array1[0].split('\'').join(''))
         }
       }

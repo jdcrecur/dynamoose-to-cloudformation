@@ -26,6 +26,7 @@ program
   .option('--TableWriteMinCap [integer]', 'TableWriteMinCap integer, defualt is 15')
   .option('--TableWriteMaxCap [integer]', 'TableWriteMaxCap integer, defualt is 15')
   .option('-s --streams [list]', 'Comma separated list of tables names to add streams, eg users,songs', list)
+  .option('-p --tableNamePrefix [string]', 'The table name prefix as a string eg "wcp_live_"')
   .parse(process.argv)
 
 if (!program.input || !program.output) {

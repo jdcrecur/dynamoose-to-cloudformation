@@ -7,7 +7,7 @@ _*beta release*_
 - The tool is used via command line (including a package.json script)
 - Available cli arguments:
 ```
-Usage: index [options]
+  Usage: index [options]
 
   Options:
 
@@ -15,7 +15,6 @@ Usage: index [options]
     -i, --input [fullpath]                          The es5 input file to parse. Expects the said file to offer a std module.exports object containing name and attributes
     -d, --dir                                       If present the tool will attempt to scrape all the 1st level files found in the folder, if not present then the tool will assume the input is a file
     -o, --output [fullpath]                         The output path including filename to place the file
-    -s --streams [list]                             Comma separated list of tables names to add streams, eg users,songs
     --WriteScalingPolicyTarget [integer]            WriteScalingPolicyTarget integer, defualt is 50
     --ReadScalingPolicyTarget [integer]             ReadScalingPolicyTarget integer, defualt is 50
     --WriteScalingPolicyScaleInCooldown [integer]   WriteScalingPolicyScaleInCooldown integer, defualt is 60
@@ -28,25 +27,23 @@ Usage: index [options]
     --TableReadMaxCap [integer]                     TableReadMaxCap integer, defualt is 15
     --TableWriteMinCap [integer]                    TableWriteMinCap integer, defualt is 15
     --TableWriteMaxCap [integer]                    TableWriteMaxCap integer, defualt is 15
+    -s --streams [list]                             Comma separated list of tables names to add streams, eg users,songs
+    -p --tableNamePrefix [string]                   The table name prefix as a string eg "wcp_live_"
     -h, --help                                      output usage information
     
 ```
 
 ## Example usage
-The below example will require the input file, convert to yaml and write to the output option. Should the output directories not exist then they will also be created, should the output file already exist it will be replaced.
+The below example will extract all the js model files from the directory `./models` and output a complete yml. It will also add streams to the table User.
 ```
-node node_modules/dynamoose-to-cloudformation -i ./models -d -o dynamodb/descriptions/all.yml
+node node_modules/dynamoose-to-cloudformation -i ./models -d -o dynamodb/descriptions/all.yml -s User
 ```
 
-See the example folder within this project which also include single model options
+For more examples, take a look at the package.json in this project.
 
-## What it will do
-Accept an object(s) for dynamoose model(s) in the following format (Note this is es5 not es6, any es6 modules will not work):
-User.js
+#### The above exmaple will output the following:
 ```
-Description: >-
-  Dynamodb cloudformation schema including scaling from
-  https://www.npmjs.com/package/dynamoose-to-cloudformation
+Description: 'Dynamodb cloudformation schema including scaling from https://www.npmjs.com/package/dynamoose-to-cloudformation'
 Parameters:
   WriteScalingPolicyTarget:
     Type: Number
@@ -66,51 +63,62 @@ Parameters:
   ReadScalingPolicyScaleOutCooldown:
     Type: Number
     Default: 60
-  TableHashingReadCapacityUnits:
+  TableLiveHashingReadCapacityUnits:
     Description: ReadCapacityUnits for the table
     Type: Number
     Default: 15
-  TableHashingWriteCapacityUnits:
+  TableLiveHashingWriteCapacityUnits:
     Description: WriteCapacityUnits for the table
     Type: Number
     Default: 15
-  TableHashingReadMinCap:
+  TableLiveHashingReadMinCap:
     Type: Number
     Default: 15
-  TableHashingReadMaxCap:
+  TableLiveHashingReadMaxCap:
     Type: Number
     Default: 15
-  TableHashingWriteMinCap:
+  TableLiveHashingWriteMinCap:
     Type: Number
     Default: 15
-  TableHashingWriteMaxCap:
+  TableLiveHashingWriteMaxCap:
     Type: Number
     Default: 15
-  TableUserReadCapacityUnits:
+  TableLiveUserReadCapacityUnits:
     Description: ReadCapacityUnits for the table
     Type: Number
     Default: 15
-  TableUserWriteCapacityUnits:
+  TableLiveUserWriteCapacityUnits:
     Description: WriteCapacityUnits for the table
     Type: Number
     Default: 15
-  TableUserReadMinCap:
+  TableLiveUserReadMinCap:
     Type: Number
     Default: 15
-  TableUserReadMaxCap:
+  TableLiveUserReadMaxCap:
     Type: Number
     Default: 15
-  TableUserWriteMinCap:
+  TableLiveUserWriteMinCap:
     Type: Number
     Default: 15
-  TableUserWriteMaxCap:
+  TableLiveUserWriteMaxCap:
     Type: Number
     Default: 15
+Outputs:
+  TableLiveHashingStreamARN:
+    Value: '!GetAtt TableLiveHashing.StreamArn'
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-Hg'
+  TableLiveUserStreamARN:
+    Value: '!GetAtt TableLiveUser.StreamArn'
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}-Ur'
 Resources:
-  TableHashing:
+  TableLiveHashing:
     Type: 'AWS::DynamoDB::Table'
     Properties:
-      TableName: Hashing
+      TableName: LiveHashing
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -122,66 +130,60 @@ Resources:
         - AttributeName: userId
           KeyType: RANGE
       ProvisionedThroughput:
-        ReadCapacityUnits: !Ref TableHashingReadCapacityUnits
-        WriteCapacityUnits: !Ref TableHashingWriteCapacityUnits
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-  TableHashingWriteScalableTarget:
+        ReadCapacityUnits: !Ref TableLiveHashingReadCapacityUnits
+        WriteCapacityUnits: !Ref TableLiveHashingWriteCapacityUnits
+  TableLiveHashingWriteScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: !Ref TableHashingWriteMaxCap
-      MinCapacity: !Ref TableHashingWriteMinCap
+      MaxCapacity: !Ref TableLiveHashingWriteMaxCap
+      MinCapacity: !Ref TableLiveHashingWriteMinCap
       ResourceId: !Join
         - /
         - - table
-          - !Ref TableHashing
-      RoleARN: >-
-        !Sub 
-        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+          - !Ref TableLiveHashing
+      RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable'
       ScalableDimension: 'dynamodb:table:WriteCapacityUnits'
       ServiceNamespace: dynamodb
-  TableHashingReadScalableTarget:
+  TableLiveHashingReadScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: !Ref TableHashingReadMaxCap
-      MinCapacity: !Ref TableHashingReadMinCap
+      MaxCapacity: !Ref TableLiveHashingReadMaxCap
+      MinCapacity: !Ref TableLiveHashingReadMinCap
       ResourceId: !Join
         - /
         - - table
-          - !Ref TableHashing
-      RoleARN: >-
-        !Sub 
-        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+          - !Ref TableLiveHashing
+      RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable'
       ScalableDimension: 'dynamodb:table:ReadCapacityUnits'
       ServiceNamespace: dynamodb
-  TableHashingWriteScalingPolicy:
+  TableLiveHashingWriteScalingPolicy:
     Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: WriteAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref TableHashingWriteScalableTarget
+      ScalingTargetId: !Ref TableLiveHashingWriteScalableTarget
       TargetTrackingScalingPolicyConfiguration:
         TargetValue: !Ref WriteScalingPolicyTarget
         ScaleInCooldown: !Ref WriteScalingPolicyScaleInCooldown
         ScaleOutCooldown: !Ref WriteScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBWriteCapacityUtilization
-  TableHashingReadScalingPolicy:
+  TableLiveHashingReadScalingPolicy:
     Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: ReadAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref TableHashingReadScalableTarget
+      ScalingTargetId: !Ref TableLiveHashingReadScalableTarget
       TargetTrackingScalingPolicyConfiguration:
         TargetValue: !Ref ReadScalingPolicyTarget
         ScaleInCooldown: !Ref ReadScalingPolicyScaleInCooldown
         ScaleOutCooldown: !Ref ReadScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBReadCapacityUtilization
-  TableUser:
+  TableLiveUser:
     Type: 'AWS::DynamoDB::Table'
     Properties:
-      TableName: User
+      TableName: LiveUser
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -193,56 +195,50 @@ Resources:
         - AttributeName: forename
           KeyType: RANGE
       ProvisionedThroughput:
-        ReadCapacityUnits: !Ref TableUserReadCapacityUnits
-        WriteCapacityUnits: !Ref TableUserWriteCapacityUnits
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-  TableUserWriteScalableTarget:
+        ReadCapacityUnits: !Ref TableLiveUserReadCapacityUnits
+        WriteCapacityUnits: !Ref TableLiveUserWriteCapacityUnits
+  TableLiveUserWriteScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: !Ref TableUserWriteMaxCap
-      MinCapacity: !Ref TableUserWriteMinCap
+      MaxCapacity: !Ref TableLiveUserWriteMaxCap
+      MinCapacity: !Ref TableLiveUserWriteMinCap
       ResourceId: !Join
         - /
         - - table
-          - !Ref TableUser
-      RoleARN: >-
-        !Sub 
-        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+          - !Ref TableLiveUser
+      RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable'
       ScalableDimension: 'dynamodb:table:WriteCapacityUnits'
       ServiceNamespace: dynamodb
-  TableUserReadScalableTarget:
+  TableLiveUserReadScalableTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:
-      MaxCapacity: !Ref TableUserReadMaxCap
-      MinCapacity: !Ref TableUserReadMinCap
+      MaxCapacity: !Ref TableLiveUserReadMaxCap
+      MinCapacity: !Ref TableLiveUserReadMinCap
       ResourceId: !Join
         - /
         - - table
-          - !Ref TableUser
-      RoleARN: >-
-        !Sub 
-        arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+          - !Ref TableLiveUser
+      RoleARN: '!Sub  arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable'
       ScalableDimension: 'dynamodb:table:ReadCapacityUnits'
       ServiceNamespace: dynamodb
-  TableUserWriteScalingPolicy:
+  TableLiveUserWriteScalingPolicy:
     Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: WriteAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref TableUserWriteScalableTarget
+      ScalingTargetId: !Ref TableLiveUserWriteScalableTarget
       TargetTrackingScalingPolicyConfiguration:
         TargetValue: !Ref WriteScalingPolicyTarget
         ScaleInCooldown: !Ref WriteScalingPolicyScaleInCooldown
         ScaleOutCooldown: !Ref WriteScalingPolicyScaleOutCooldown
         PredefinedMetricSpecification:
           PredefinedMetricType: DynamoDBWriteCapacityUtilization
-  TableUserReadScalingPolicy:
+  TableLiveUserReadScalingPolicy:
     Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
     Properties:
       PolicyName: ReadAutoScalingPolicy
       PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref TableUserReadScalableTarget
+      ScalingTargetId: !Ref TableLiveUserReadScalableTarget
       TargetTrackingScalingPolicyConfiguration:
         TargetValue: !Ref ReadScalingPolicyTarget
         ScaleInCooldown: !Ref ReadScalingPolicyScaleInCooldown

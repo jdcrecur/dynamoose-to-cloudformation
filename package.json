@@ -1,10 +1,13 @@
 {
   "name": "dynamoose-to-cloudformation",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "A beta release of a cloudformation yml generation from dynamoose models",
   "main": "index.js",
   "scripts": {
     "build:all": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml",
+    "build:all-with-streams": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User,Hashing",
+    "build:all-with-1-stream": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User",
+    "build:all-with-table-prefix": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User -p Live",
     "build:user": "node ./index.js -i ./models/user.js -o dynamodb/descriptions/user.yml",
     "create:example": "echo 'todo'",
     "test": "NODE_ENV=TEST jest"
@@ -26,6 +29,7 @@
     "lodash": "latest",
     "recursive-readdir": "^2.2.2",
     "replace-in-file": "^3.4.0",
+    "string": "^3.3.3",
     "uppercamelcase": "^3.0.0",
     "write-yaml": "^1.0.0"
   },
