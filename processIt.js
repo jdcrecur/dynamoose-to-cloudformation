@@ -352,9 +352,12 @@ var self = {
 
       while ((array1 = regex1.exec(data)) !== null) {
         var start = array1[0].substring(0, 6)
-        if (start.indexOf('\'!Ref ', '\'!Sub ', '\'!GetAt') !== -1) {
-          self.newFileData = self.newFileData.split(array1[0]).join(array1[0].split('\'').join(''))
-        }
+        var arr = ['\'!Ref ', '\'!Sub ', '!GetA']
+        arr.forEach(function (item) {
+          if (start.indexOf(item) !== -1) {
+            self.newFileData = self.newFileData.split(array1[0]).join(array1[0].split('\'').join(''))
+          }
+        })
       }
 
       fs.outputFileSync(filePath, self.newFileData)

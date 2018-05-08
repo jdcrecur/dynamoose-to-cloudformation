@@ -1,16 +1,15 @@
 {
   "name": "dynamoose-to-cloudformation",
-  "version": "0.1.8",
+  "version": "0.2.2",
   "description": "A beta release of a cloudformation yml generation from dynamoose models",
   "main": "index.js",
   "scripts": {
-    "build:all": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml",
-    "build:all-with-streams": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User,Hashing",
-    "build:all-with-1-stream": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User",
-    "build:all-with-table-prefix": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User,Hashing -p Live",
+    "build:all": "npm run build:all-with-streams && npm run build:all-with-1-stream && npm run build:all-with-table-prefix",
+    "build:all-with-streams": "node ./index.js -i ./models -d -o dynamodb/descriptions/streams.yml -s User,Hashing",
+    "build:all-with-1-stream": "node ./index.js -i ./models -d -o dynamodb/descriptions/stream.yml -s User",
+    "build:all-with-table-prefix": "node ./index.js -i ./models -d -o dynamodb/descriptions/streamsPrefix.yml -s User,Hashing -p Live",
     "build:user": "node ./index.js -i ./models/user.js -o dynamodb/descriptions/user.yml",
-    "create:example": "echo 'todo'",
-    "test": "NODE_ENV=TEST jest"
+    "test__": "npm run build:all && NODE_ENV=TEST jest"
   },
   "repository": {
     "type": "git",
@@ -24,8 +23,8 @@
   "homepage": "https://github.com/jdcrecur/dynamoose-to-cloudformation#readme",
   "dependencies": {
     "cli-color": "^1.2.0",
-    "commander": "^2.15.0",
-    "fs-extra": "^5.0.0",
+    "commander": "^2.15.1",
+    "fs-extra": "^6.0.0",
     "lodash": "latest",
     "recursive-readdir": "^2.2.2",
     "replace-in-file": "^3.4.0",
@@ -34,6 +33,7 @@
     "write-yaml": "^1.0.0"
   },
   "devDependencies": {
-    "jest": "^22.4.2"
+    "jest": "^22.4.3",
+    "yamljs": "^0.3.0"
   }
 }
