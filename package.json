@@ -7,7 +7,7 @@
     "build:all": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml",
     "build:all-with-streams": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User,Hashing",
     "build:all-with-1-stream": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User",
-    "build:all-with-table-prefix": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User -p Live",
+    "build:all-with-table-prefix": "node ./index.js -i ./models -d -o dynamodb/descriptions/all.yml -s User,Hashing -p Live",
     "build:user": "node ./index.js -i ./models/user.js -o dynamodb/descriptions/user.yml",
     "create:example": "echo 'todo'",
     "test": "NODE_ENV=TEST jest"

@@ -10,6 +10,7 @@ var ymlObject = {}
 
 var self = {
   process: function (options, files) {
+    options = self.optionsPrep(options)
     ymlObject = self.getBaseAttributes(options)
 
     self.iterator(options, files, function () {
@@ -65,7 +66,9 @@ var self = {
         Default: options.ReadScalingPolicyScaleOutCooldown || 60
       }
     }
-    ymlObject.Outputs = {}
+    if (options.streams) {
+      ymlObject.Outputs = {}
+    }
     ymlObject.Resources = {}
     return ymlObject
   },
@@ -142,6 +145,18 @@ var self = {
     return modelFile
   },
 
+  optionsPrep: function (options) {
+    if (options.tableNamePrefix) {
+      if (options.streams) {
+        // add the prefix to all table names
+        for (var i = 0; i < options.streams.length; ++i) {
+          options.streams[i] = options.tableNamePrefix + options.streams[i]
+        }
+      }
+    }
+    return options
+  },
+
   processSingleModel: function (options, file, cb) {
     var modelFile
     try {
@@ -185,16 +200,6 @@ var self = {
       Default: options.TableWriteMaxCap || 15
     }
 
-    // Outputs object
-    ymlObject.Outputs['Table' + name + 'StreamARN'] = {
-      Value: '!GetAtt Table' + name + '.StreamArn',
-      Export: {
-        'Name': {
-          'Fn::Sub': '${AWS::StackName}-'+modelFile.shorthand
-        }
-      }
-    }
-
     // The actual table definition
     ymlObject.Resources['Table' + name] = {
       Type: 'AWS::DynamoDB::Table',
@@ -213,6 +218,15 @@ var self = {
       if (options.streams.indexOf(modelFile.name) !== -1) {
         ymlObject.Resources['Table' + name].Properties.StreamSpecification = {
           StreamViewType: 'NEW_AND_OLD_IMAGES'
+        }
+        // Outputs object
+        ymlObject.Outputs['Table' + name + 'StreamARN'] = {
+          Value: '!GetAtt Table' + name + '.StreamArn',
+          Export: {
+            'Name': {
+              'Fn::Sub': '${AWS::StackName}-' + modelFile.shorthand
+            }
+          }
         }
       }
     }
@@ -338,7 +352,7 @@ var self = {
 
       while ((array1 = regex1.exec(data)) !== null) {
         var start = array1[0].substring(0, 6)
-        if ( start.indexOf('\'!Ref ', '\'!Sub ', '\'!GetAt') !== -1 ) {
+        if (start.indexOf('\'!Ref ', '\'!Sub ', '\'!GetAt') !== -1) {
           self.newFileData = self.newFileData.split(array1[0]).join(array1[0].split('\'').join(''))
         }
       }
