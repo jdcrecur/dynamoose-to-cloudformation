@@ -216,6 +216,7 @@ var self = {
 
     if (options.streams) {
       if (options.streams.indexOf(modelFile.name) !== -1) {
+        // Table specific stream spec
         ymlObject.Resources['Table' + name].Properties.StreamSpecification = {
           StreamViewType: 'NEW_AND_OLD_IMAGES'
         }
