@@ -199,12 +199,20 @@ var self = {
       Type: 'Number',
       Default: options.TableWriteMaxCap || 15
     }
+    }
+    ymlObject.Parameters['Table' + name + 'PointinTimeBackup'] = {
+      Type: 'String',
+      Default: options.TablePointinTimeBackup || false
+    }
 
     // The actual table definition
     ymlObject.Resources['Table' + name] = {
       Type: 'AWS::DynamoDB::Table',
       Properties: {
         TableName: modelFile.name,
+        PointInTimeRecoverySpecification: {
+          PointInTimeRecoveryEnabled: '!Ref Table' + name + 'PointinTimeBackup'
+          },
         AttributeDefinitions: [],
         KeySchema: [],
         ProvisionedThroughput: {
