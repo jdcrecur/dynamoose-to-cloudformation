@@ -199,7 +199,6 @@ var self = {
       Type: 'Number',
       Default: options.TableWriteMaxCap || 15
     }
-    }
     ymlObject.Parameters['Table' + name + 'PointinTimeBackup'] = {
       Type: 'String',
       Default: options.TablePointinTimeBackup || false
