@@ -1,6 +1,6 @@
 {
   "name": "dynamoose-to-cloudformation",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "A beta release of a cloudformation yml generation from dynamoose models",
   "main": "index.js",
   "scripts": {
