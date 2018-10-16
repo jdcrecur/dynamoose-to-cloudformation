@@ -214,6 +214,9 @@ var self = {
           },
         AttributeDefinitions: [],
         KeySchema: [],
+	SSESpecification: {
+	  SSEEnabled: true
+	},
         ProvisionedThroughput: {
           ReadCapacityUnits: '!Ref Table' + name + 'ReadCapacityUnits',
           WriteCapacityUnits: '!Ref Table' + name + 'WriteCapacityUnits'
