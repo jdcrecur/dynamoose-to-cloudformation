@@ -207,6 +207,9 @@ var self = {
         TableName: modelFile.name,
         AttributeDefinitions: [],
         KeySchema: [],
+	SSESpecification: {
+	  SSEEnabled: true
+	},
         ProvisionedThroughput: {
           ReadCapacityUnits: '!Ref Table' + name + 'ReadCapacityUnits',
           WriteCapacityUnits: '!Ref Table' + name + 'WriteCapacityUnits'
