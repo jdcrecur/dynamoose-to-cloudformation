@@ -209,6 +209,7 @@ var self = {
       Type: 'AWS::DynamoDB::Table',
       Properties: {
         TableName: modelFile.name,
+        BillingMode: PAY_PER_REQUEST,
         PointInTimeRecoverySpecification: {
           PointInTimeRecoveryEnabled: '!Ref Table' + name + 'PointinTimeBackup'
           },
